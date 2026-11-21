@@ -1,5 +1,7 @@
 # Snowcast
 
+Live site: https://swzerfoss-lab.github.io/2027snowforecast/
+
 Daily, storm and season snowfall predictions for Killington, VT and Taos Ski Valley, NM, built on free data.
 
 ## How it works
