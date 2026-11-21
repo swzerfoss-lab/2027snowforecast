@@ -83,6 +83,29 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
 .prose { max-width: 68ch; font-size: 14px; color: var(--ink); }
 .prose p { margin: 0 0 10px; }
 .err { color: var(--warm); }
+
+/* Resort photo hero with live snowfall */
+.photo-hero { position: relative; overflow: hidden; isolation: isolate; min-height: 340px; padding: 0; display: grid; align-content: end;
+  background: #3d4b56; border: 0; color: #fff; }
+.photo-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2;
+  filter: brightness(var(--dim, 1)) saturate(var(--sat, 1)); transition: filter 1.2s ease; }
+.photo-hero::after { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(180deg, rgba(8,16,24,.45) 0%, rgba(8,16,24,0) 28%, rgba(8,16,24,.2) 50%, rgba(8,16,24,.82) 100%); }
+.photo-hero > canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.photo-hero .hero-top { position: absolute; top: 14px; left: 16px; right: 16px; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.photo-hero .hero-body { position: relative; z-index: 2; padding: 64px 18px 30px; display: grid; gap: 14px; }
+.photo-hero .resort-name { font-size: 52px; line-height: .95; text-shadow: 0 2px 12px rgba(0,0,0,.35); }
+.photo-hero .label, .photo-hero .stat .note, .photo-hero .stat .big .u { color: rgba(255,255,255,.82); }
+.photo-hero .stat .big { text-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.chip { display: inline-flex; align-items: center; gap: 7px; font: 500 12px var(--mono); padding: 4px 10px; border-radius: 99px;
+  background: rgba(10,20,30,.55); color: #fff; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.chip .dot { background: #9fd0ff; box-shadow: 0 0 0 3px rgba(159,208,255,.25); }
+.chip .dot.off { background: #9aa7b2; box-shadow: none; }
+.chip .dot.snap { background: var(--warm); box-shadow: none; }
+.photo-credit { position: absolute; right: 10px; bottom: 7px; z-index: 2; font: 400 10px var(--mono); color: rgba(255,255,255,.8);
+  text-shadow: 0 1px 2px rgba(0,0,0,.6); max-width: 75%; text-align: right; }
+.photo-credit a { color: inherit; }
+@media (max-width: 560px) { .photo-hero .resort-name { font-size: 40px; } .photo-hero .stat .big { font-size: 40px; } }
 </style>
 
 <div class="wrap">
@@ -100,12 +123,18 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
     </div>
   </header>
 
-  <section class="panel" aria-live="polite">
-    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:14px">
-      <h1 class="resort-name" id="resort-name">Killington</h1>
-      <span class="status" id="status"><span class="dot"></span>Loading forecast…</span>
+  <section class="panel photo-hero" id="photo-hero" aria-live="polite">
+    <img id="hero-img" alt="" src="img/killington.jpg">
+    <canvas id="snowfall" aria-hidden="true"></canvas>
+    <div class="hero-top">
+      <span class="chip" id="snow-now"><span class="dot off"></span><span>Checking current conditions…</span></span>
+      <span class="chip" id="status"><span class="dot"></span>Loading forecast…</span>
     </div>
-    <div class="hero" id="hero"></div>
+    <div class="hero-body">
+      <h1 class="resort-name" id="resort-name">Killington</h1>
+      <div class="hero" id="hero"></div>
+    </div>
+    <span class="photo-credit" id="photo-credit"></span>
   </section>
 
   <section class="panel">
@@ -152,6 +181,7 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
 </div>
 
 <script src="snow.js"></script>
+<script src="snowfall.js"></script>
 <script>
 (async function () {
   const S = window.Snow;
@@ -334,9 +364,63 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
       `<tr><td>${names[r.site] || r.site}</td><td>${r.pred_corr.toFixed(2)}</td><td>${r.raw_corr.toFixed(2)}</td><td>${Math.round(r.pred_hit * 100)}%</td><td>${r.pred_season_mape == null ? "—" : Math.round(r.pred_season_mape) + "%"}</td><td>${r.raw_season_mape == null ? "—" : Math.round(r.raw_season_mape) + "%"}</td></tr>`).join("")}</tbody>`;
   }
 
+  /* Resort photo and live snowfall */
+  const PHOTOS = {
+    killington: { src: "img/killington.jpg", pos: "50% 40%", author: "NHRHS2010", license: "CC BY-SA 3.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/", page: "https://commons.wikimedia.org/wiki/File:Bear_Mountain_Killington.jpg" },
+    taos: { src: "img/taos.jpg", pos: "50% 45%", author: "Paul Sableman", license: "CC BY 2.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/2.0/", page: "https://commons.wikimedia.org/wiki/File:Taos_ski_area.jpg" },
+  };
+  const SF = window.Snowfall;
+  const field = new SF.Field($("snowfall"));
+  const nowCache = {};
+  // ?snow=0..5 previews a snow level without waiting for real snow
+  const preview = (() => { const v = new URLSearchParams(location.search).get("snow"); return v !== null && /^[0-5]$/.test(v) ? +v : null; })();
+
+  async function loadNow(key) {
+    if (preview !== null) return { rateIn: SF.PRESET_RATE[preview], gust: preview === 5 ? 45 : 15, preview: true };
+    const hit = nowCache[key];
+    if (hit && Date.now() - hit.at < 15 * 60e3) return hit;
+    const R = S.RESORTS[key];
+    const q = new URLSearchParams({ latitude: R.lat, longitude: R.lon, elevation: R.elev, timezone: R.tz,
+      hourly: "snowfall,wind_gusts_10m", wind_speed_unit: "mph", past_hours: 1, forecast_hours: 1 });
+    try {
+      const h = (await getJSON("https://api.open-meteo.com/v1/forecast?" + q)).hourly;
+      // the hour that just ended and the one in progress; take the larger so a storm that is starting shows up
+      const cm = Math.max(0, ...h.snowfall.map((v) => v || 0));
+      const gust = Math.max(0, ...h.wind_gusts_10m.map((v) => v || 0));
+      return (nowCache[key] = { rateIn: cm / 2.54, gust, at: Date.now() });
+    } catch (e) {
+      return { rateIn: 0, gust: 0, failed: true };
+    }
+  }
+
+  function drawPhoto(key) {
+    const ph = PHOTOS[key], img = $("hero-img");
+    if (img.getAttribute("src") !== ph.src) img.src = ph.src;
+    img.style.objectPosition = ph.pos;
+    $("photo-credit").innerHTML = `Photo: <a href="${ph.page}" target="_blank" rel="noopener">${ph.author}</a> · <a href="${ph.licenseUrl}" target="_blank" rel="noopener">${ph.license}</a> · Wikimedia Commons`;
+  }
+
+  async function drawSnowNow(key) {
+    const now = await loadNow(key);
+    if (key !== state.resort) return;
+    const lvl = SF.levelFor(now.rateIn, now.gust);
+    const p = field.set(lvl.n ? now.rateIn : 0, now.gust);
+    $("photo-hero").style.setProperty("--dim", p.dim.toFixed(3));
+    $("photo-hero").style.setProperty("--sat", p.sat.toFixed(3));
+    const rate = state.unit === "in" ? `${now.rateIn.toFixed(2)} in/hr` : `${(now.rateIn * 2.54).toFixed(1)} cm/hr`;
+    const text = now.failed ? "Current conditions unavailable"
+      : lvl.n ? `Snowing now · ${lvl.name} · ${rate}${now.preview ? " (preview)" : ""}`
+      : `Not snowing right now${now.preview ? " (preview)" : ""}`;
+    $("snow-now").innerHTML = `<span class="dot${lvl.n ? "" : " off"}"></span><span>${text}</span>`;
+  }
+
   async function render() {
     const R = S.RESORTS[state.resort];
     $("resort-name").textContent = `${R.name}, ${R.state}`;
+    drawPhoto(state.resort);
+    drawSnowNow(state.resort);
     document.querySelectorAll("[data-resort]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.resort === state.resort));
     document.querySelectorAll("[data-unit]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.unit === state.unit));
     document.querySelectorAll("[data-enso]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.enso === state.enso));
@@ -361,5 +445,6 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
   drawCalibration();
   drawScores();
   render();
+  setInterval(() => { if (!document.hidden) drawSnowNow(state.resort); }, 15 * 60e3);
 })();
 </script>
