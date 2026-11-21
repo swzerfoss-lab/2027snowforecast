@@ -29,3 +29,10 @@ Open-Meteo's free tier has a daily request limit per IP; the history download is
 
 ## Hosting
 `.github/workflows/pages.yml` deploys `app/` to GitHub Pages on every push and after the daily check (Settings → Pages → Source: GitHub Actions).
+
+## Resort photos and live snowfall
+The top card shows a photo of the selected resort. When Open-Meteo's hourly forecast has snow falling at the resort right now, `app/snowfall.js` animates it over the photo, scaled to the rate: Flurries (under 0.1 in/hr), Light (0.1-0.5), Moderate (0.5-1), Heavy (1-2) and Blizzard (over 2 in/hr with gusts over 35 mph). It checks every 15 minutes, pauses when the tab is hidden, and shows a still frame for people who turn on reduced motion. Add `?snow=0` to `?snow=5` to the URL to preview a level.
+
+Photos, from Wikimedia Commons, shown unedited:
+- `app/img/killington.jpg`: [Bear Mountain Killington](https://commons.wikimedia.org/wiki/File:Bear_Mountain_Killington.jpg) by NHRHS2010, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)
+- `app/img/taos.jpg`: [Taos ski area](https://commons.wikimedia.org/wiki/File:Taos_ski_area.jpg) by Paul Sableman, [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/)
