@@ -141,6 +141,9 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
     <h2>How good is this?</h2>
     <p class="sub">Scored on seasons the model never saw, at the stations it learned from.</p>
     <div class="table-scroll"><table id="scores"></table></div>
+    <h3 class="label" style="margin:22px 0 6px">Recent forecasts vs measured snow</h3>
+    <p class="sub" id="cal-sub">Every day the site saves its forecast, then checks it against measured snow at nearby stations once reports come in. Forecasts are nudged by how far off they've been lately.</p>
+    <div class="table-scroll"><table id="cal"></table></div>
     <div class="prose" style="margin-top:14px">
       <p>The model takes Open-Meteo's daily weather (temperature, precipitation, wind, humidity, pressure) and learns how much snow actually piles up, using NOAA's measured daily snowfall at Mt Mansfield and Chittenden, Vermont, and the SNOTEL snow-depth sensors at Taos Powderhorn and Red River Pass, New Mexico.</p>
       <p>SNOTEL depth gains miss snow that settles within the day, so New Mexico numbers lean low. Treat Taos totals as a floor.</p>
@@ -191,6 +194,12 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
     const today = forecast.time[7];
     const daily = S.mergeDaily(archive, forecast);
     const days = S.predictDaily(state.model, daily, R);
+    const buckets = state.cal?.regions?.[R.isNM ? "NM" : "VT"] || [];
+    for (const d of days) {
+      const lead = Math.round((dt(d.date) - dt(today)) / 864e5);
+      const b = lead >= 0 && buckets.find((x) => lead >= x.min_lead && lead <= x.max_lead);
+      d.modelCm = d.cm; d.factor = b ? b.factor : 1; d.cm = d.cm * d.factor;
+    }
     return (state.data[key] = { days, today, source, fetched: state.snap?.fetched });
   }
 
@@ -217,7 +226,7 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
     view.forEach((d, i) => {
       const x = 30 + i * (bw + gap), past = d.date < today;
       const h = base - y(d.cm);
-      g += `<rect x="${x}" y="${base - h}" width="${bw}" height="${Math.max(h, 0)}" rx="3" fill="${past ? "var(--snow-soft)" : "var(--snow)"}"><title>${short(d.date)}: ${fmt(d.cm)}${U()} model, ${fmt(d.rawCm || 0)}${U()} Open-Meteo</title></rect>`;
+      g += `<rect x="${x}" y="${base - h}" width="${bw}" height="${Math.max(h, 0)}" rx="3" fill="${past ? "var(--snow-soft)" : "var(--snow)"}"><title>${short(d.date)}: ${fmt(d.cm)}${U()} model${d.factor && d.factor !== 1 ? ` (after ${d.factor > 1 ? "+" : "−"}${Math.round(Math.abs(d.factor - 1) * 100)}% adjustment)` : ""}, ${fmt(d.rawCm || 0)}${U()} Open-Meteo</title></rect>`;
       if (!Number.isNaN(d.rawCm)) g += `<line x1="${x + 4}" x2="${x + bw - 4}" y1="${y(d.rawCm)}" y2="${y(d.rawCm)}" stroke="var(--raw)" stroke-width="3" stroke-linecap="round"/>`;
       if (conv(d.cm) >= (state.unit === "in" ? 0.5 : 1)) g += `<text class="val" x="${x + bw / 2}" y="${base - h - 6}" text-anchor="middle">${fmt(d.cm)}</text>`;
       const dd = dt(d.date);
@@ -307,6 +316,17 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
       : `<span class="dot snap"></span>Saved forecast from ${src.fetched?.replace("T", " ").replace("Z", " UTC")}`;
   }
 
+  function drawCalibration() {
+    const c = state.cal;
+    if (!c) { $("cal").innerHTML = `<tbody><tr><td>No checks yet.</td></tr></tbody>`; return; }
+    const pct = (f) => (Math.abs(f - 1) < 0.005 ? "no change" : `${f > 1 ? "+" : "−"}${Math.round(Math.abs(f - 1) * 100)}%`);
+    const rows = [];
+    for (const [reg, name] of [["VT", "Killington (checked at Shrewsbury, Pittsfield, Barnard, Chittenden)"], ["NM", "Taos (checked at Taos Powderhorn, Red River Pass)"]])
+      for (const b of c.regions[reg]) rows.push(`<tr><td>${b === c.regions[reg][0] ? name : ""}</td><td>${b.label}</td><td>${b.days}</td><td>${fmt(b.pred_cm, 1)}${U()}</td><td>${fmt(b.obs_cm, 1)}${U()}</td><td>${pct(b.factor)}</td></tr>`);
+    $("cal").innerHTML = `<thead><tr><th>Resort</th><th>Forecast range</th><th>Days checked</th><th>Forecast</th><th>Measured</th><th>Adjustment</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+    $("cal-sub").textContent = `Every day the site saves its forecast, then checks it against measured snow at nearby stations once reports come in (volunteer reports take about a week). Forecasts are nudged by how far off they've been over the last ${c.window_days} days. The nudge stays small until a fair amount of snow has been checked. Updated ${c.updated}.`;
+  }
+
   function drawScores() {
     const names = { mt_mansfield: "Mt Mansfield, VT (1204 m)", chittenden: "Chittenden, VT (354 m)", taos_powderhorn: "Taos Powderhorn, NM (3359 m)", red_river_pass: "Red River Pass, NM (2999 m)" };
     const rows = state.meta.scores;
@@ -333,10 +353,12 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
   }
 
   document.querySelectorAll("[data-resort]").forEach((b) => b.addEventListener("click", () => { state.resort = b.dataset.resort; try { localStorage.setItem("snowcast.resort", state.resort); } catch (e) {} render(); }));
-  document.querySelectorAll("[data-unit]").forEach((b) => b.addEventListener("click", () => { state.unit = b.dataset.unit; try { localStorage.setItem("snowcast.unit", state.unit); } catch (e) {} render(); }));
+  document.querySelectorAll("[data-unit]").forEach((b) => b.addEventListener("click", () => { state.unit = b.dataset.unit; try { localStorage.setItem("snowcast.unit", state.unit); } catch (e) {} drawCalibration(); render(); }));
 
   document.querySelectorAll("[data-enso]").forEach((b) => b.addEventListener("click", () => { state.enso = b.dataset.enso; try { localStorage.setItem("snowcast.enso", state.enso); } catch (e) {} render(); }));
   [state.model, state.clim, state.meta] = await Promise.all([getJSON("model.json"), getJSON("climatology.json"), getJSON("meta.json")]);
+  try { state.cal = await getJSON("calibration.json"); } catch (e) { state.cal = null; }
+  drawCalibration();
   drawScores();
   render();
 })();

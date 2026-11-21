@@ -22,5 +22,8 @@ Daily, storm and season snowfall predictions for Killington, VT and Taos Ski Val
 
 Open-Meteo's free tier has a daily request limit per IP; the history download is large, so run it once and keep `data/meteo/`.
 
+## Forecast vs actual calibration
+`pipeline/verify.py` runs daily in GitHub Actions. It saves the day's 16-day forecast for both resorts and for nearby measuring stations to `data/forecast_log.csv`, pulls recent measured snow (SNOTEL at Taos Powderhorn and Red River Pass; NWS COOP and CoCoRaHS observers at Chittenden, Shrewsbury, Pittsfield and Barnard, VT), and writes `app/calibration.json`: a correction factor per region and lead time (days 1-3, 4-7, 8-16) over the last 120 days, shrunk toward 1.0 with a 60 cm prior and clamped to 0.5-2.0. The app multiplies future days by that factor.
+
 ## Hosting
-Pushing to `main` deploys `app/` to GitHub Pages via `.github/workflows/pages.yml` (Settings → Pages → Source: GitHub Actions).
+`.github/workflows/pages.yml` deploys `app/` to GitHub Pages on every push and after the daily check (Settings → Pages → Source: GitHub Actions).

@@ -11,15 +11,15 @@ def meteo(name):
     df["date"] = pd.to_datetime(df.pop("time"))
     return df.set_index("date")
 
-def obs_ghcn(station):
-    df = pd.read_csv(ROOT / "obs" / f"ghcn_{station}.csv", parse_dates=["DATE"]).set_index("DATE")
+def obs_ghcn(station, path=None):
+    df = pd.read_csv(path or ROOT / "obs" / f"ghcn_{station}.csv", parse_dates=["DATE"]).set_index("DATE")
     # COOP observers read the gauge in the morning: the value on day D is mostly snow that fell on D-1.
     # Shift so the target lines up with the calendar day the snow fell.
     snow_cm = df["SNOW"] / 10.0
     return snow_cm.shift(-1).rename("obs_snow_cm")
 
-def obs_snotel(sid):
-    raw = json.loads((ROOT / "obs" / f"sntl_{sid}.json").read_text())
+def obs_snotel(sid, path=None):
+    raw = json.loads(pathlib.Path(path or ROOT / "obs" / f"sntl_{sid}.json").read_text())
     series = {}
     for el in raw[0]["data"]:
         code = el["stationElement"]["elementCode"]

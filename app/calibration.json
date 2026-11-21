@@ -1,0 +1,71 @@
+{
+ "updated": "2026-11-21",
+ "window_days": 120,
+ "prior_cm": 60.0,
+ "regions": {
+  "VT": [
+   {
+    "min_lead": 0,
+    "max_lead": 2,
+    "label": "Days 1\u20133",
+    "factor": 1.0,
+    "days": 0,
+    "obs_cm": 0.0,
+    "pred_cm": 0.0,
+    "snow_days": 0
+   },
+   {
+    "min_lead": 3,
+    "max_lead": 6,
+    "label": "Days 4\u20137",
+    "factor": 1.0,
+    "days": 0,
+    "obs_cm": 0.0,
+    "pred_cm": 0.0,
+    "snow_days": 0
+   },
+   {
+    "min_lead": 7,
+    "max_lead": 15,
+    "label": "Days 8\u201316",
+    "factor": 1.0,
+    "days": 0,
+    "obs_cm": 0.0,
+    "pred_cm": 0.0,
+    "snow_days": 0
+   }
+  ],
+  "NM": [
+   {
+    "min_lead": 0,
+    "max_lead": 2,
+    "label": "Days 1\u20133",
+    "factor": 1.0,
+    "days": 0,
+    "obs_cm": 0.0,
+    "pred_cm": 0.0,
+    "snow_days": 0
+   },
+   {
+    "min_lead": 3,
+    "max_lead": 6,
+    "label": "Days 4\u20137",
+    "factor": 1.0,
+    "days": 0,
+    "obs_cm": 0.0,
+    "pred_cm": 0.0,
+    "snow_days": 0
+   },
+   {
+    "min_lead": 7,
+    "max_lead": 15,
+    "label": "Days 8\u201316",
+    "factor": 1.0,
+    "days": 0,
+    "obs_cm": 0.0,
+    "pred_cm": 0.0,
+    "snow_days": 0
+   }
+  ]
+ }
+}
