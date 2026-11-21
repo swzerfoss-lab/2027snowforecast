@@ -123,10 +123,18 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
 
   <section class="panel">
     <h2>Season outlook</h2>
-    <p class="sub" id="season-sub">October through May.</p>
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start">
+      <p class="sub" id="season-sub" style="margin:0">October through May.</p>
+      <div class="seg" role="group" aria-label="Compare with">
+        <button id="e-all" data-enso="all" aria-pressed="true">All winters</button>
+        <button id="e-nino" data-enso="nino" aria-pressed="false">El Niño</button>
+        <button id="e-nina" data-enso="nina" aria-pressed="false">La Niña</button>
+      </div>
+    </div>
+    <p class="sub" id="enso-note" style="margin-top:8px"></p>
     <div class="season-grid" id="season-stats"></div>
     <div class="chart-scroll"><div id="season-chart"></div></div>
-    <div class="legend"><span><i class="sw" style="background:var(--snow)"></i>This season so far + forecast</span><span><i class="sw" style="background:var(--line)"></i>Past seasons (2005–2025)</span><span><i class="sw" style="background:var(--muted);height:3px;vertical-align:3px"></i>Typical season</span></div>
+    <div class="legend"><span><i class="sw" style="background:var(--snow)"></i>This season so far + forecast</span><span><i class="sw" style="background:var(--line)"></i>Past seasons shown</span><span><i class="sw" style="background:var(--muted);height:3px;vertical-align:3px"></i>Typical season</span></div>
   </section>
 
   <section class="panel">
@@ -144,9 +152,10 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
 <script>
 (async function () {
   const S = window.Snow;
-  const state = { resort: "killington", unit: "in", data: {}, model: null, clim: null, meta: null, snap: null };
+  const state = { resort: "killington", unit: "in", enso: "all", data: {}, model: null, clim: null, meta: null, snap: null };
   try { const r = localStorage.getItem("snowcast.resort"); if (r && S.RESORTS[r]) state.resort = r;
-        const u = localStorage.getItem("snowcast.unit"); if (u === "cm" || u === "in") state.unit = u; } catch (e) {}
+        const u = localStorage.getItem("snowcast.unit"); if (u === "cm" || u === "in") state.unit = u;
+        const e = localStorage.getItem("snowcast.enso"); if (["all", "nino", "nina"].includes(e)) state.enso = e; } catch (e) {}
 
   const $ = (id) => document.getElementById(id);
   const conv = (cm) => (state.unit === "in" ? cm / 2.54 : cm);
@@ -243,18 +252,23 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
 
   function drawSeason(days, today) {
     const clim = state.clim[state.resort];
-    const o = S.seasonOutlook(days, today, clim);
+    const enso = state.clim.enso;
+    const o = S.seasonOutlook(days, today, clim, enso, state.enso);
+    const yrs = Object.keys(clim.seasons).filter((k) => state.enso === "all" || enso[k] === state.enso).map((k) => `${k}–${String(+k + 1).slice(2)}`);
+    $("enso-note").textContent = state.enso === "all"
+      ? `Rest-of-season range uses all ${o.nSeasons} winters since 2005.`
+      : `Rest-of-season range uses only the ${o.nSeasons} ${state.enso === "nino" ? "El Niño" : "La Niña"} winters since 2005 (${yrs.join(", ")}). Few seasons, so treat the range as rough.`;
     $("season-sub").textContent = `${o.season}–${String(o.season + 1).slice(2)} season, October 1 through May 31.`;
     const diff = o.toDate - o.normalToDate;
     $("season-stats").innerHTML = `
       <div class="stat"><span class="label">So far</span><span class="big">${fmt(o.toDate, 0)}<span class="u">${U()}</span></span><span class="note">typical by now: ${fmt(o.normalToDate, 0)}${U()} (${diff >= 0 ? "+" : "−"}${fmt(Math.abs(diff), 0)})</span></div>
       <div class="stat"><span class="label">Next 16 days</span><span class="big">${fmt(o.forecast, 0)}<span class="u">${U()}</span></span><span class="note">model forecast</span></div>
       <div class="stat"><span class="label">Projected season</span><span class="big">${fmt(o.projected.p50, 0)}<span class="u">${U()}</span></span><span class="note">80% range ${fmt(o.projected.p10, 0)}–${fmt(o.projected.p90, 0)}${U()}</span></div>
-      <div class="stat"><span class="label">Typical season</span><span class="big">${fmt(o.normalTotal, 0)}<span class="u">${U()}</span></span><span class="note">median 2005–2025, model at this spot</span></div>`;
+      <div class="stat"><span class="label">Typical season</span><span class="big">${fmt(o.normalTotal, 0)}<span class="u">${U()}</span></span><span class="note">median of ${state.enso === "all" ? "all" : state.enso === "nino" ? "El Niño" : "La Niña"} winters, model at this spot</span></div>`;
 
     // cumulative chart
     const W = 900, H = 260, L = 44, R = 70, T = 12, B = 230, N = 243;
-    const seasons = Object.entries(clim.seasons).filter(([k]) => Number(k) !== o.season).map(([, a]) => { let c = 0; return a.map((v) => (c += v)); });
+    const seasons = Object.entries(clim.seasons).filter(([k]) => Number(k) !== o.season && (state.enso === "all" || enso[k] === state.enso)).map(([, a]) => { let c = 0; return a.map((v) => (c += v)); });
     const start = S.SEASON_START(o.season);
     const cur = days.filter((d) => d.date >= start && d.date <= S.SEASON_END(o.season));
     let c = 0; const curCum = cur.map((d) => ({ i: Math.round((dt(d.date) - dt(start)) / 864e5), v: (c += d.cm), fc: d.date >= today }));
@@ -305,6 +319,7 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
     $("resort-name").textContent = `${R.name}, ${R.state}`;
     document.querySelectorAll("[data-resort]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.resort === state.resort));
     document.querySelectorAll("[data-unit]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.unit === state.unit));
+    document.querySelectorAll("[data-enso]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.enso === state.enso));
     try {
       const d = await loadResort(state.resort);
       drawDaily(d.days, d.today);
@@ -320,6 +335,7 @@ th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercas
   document.querySelectorAll("[data-resort]").forEach((b) => b.addEventListener("click", () => { state.resort = b.dataset.resort; try { localStorage.setItem("snowcast.resort", state.resort); } catch (e) {} render(); }));
   document.querySelectorAll("[data-unit]").forEach((b) => b.addEventListener("click", () => { state.unit = b.dataset.unit; try { localStorage.setItem("snowcast.unit", state.unit); } catch (e) {} render(); }));
 
+  document.querySelectorAll("[data-enso]").forEach((b) => b.addEventListener("click", () => { state.enso = b.dataset.enso; try { localStorage.setItem("snowcast.enso", state.enso); } catch (e) {} render(); }));
   [state.model, state.clim, state.meta] = await Promise.all([getJSON("model.json"), getJSON("climatology.json"), getJSON("meta.json")]);
   drawScores();
   render();

@@ -121,7 +121,7 @@
 
   // Season outlook: to-date + forecast + historical remainder distribution.
   // clim.seasons: {"2010": [cm per day from Oct 1 ...], ...}
-  function seasonOutlook(days, today, clim) {
+  function seasonOutlook(days, today, clim, enso, phase) {
     const y = seasonStartYear(today);
     const start = SEASON_START(y), end = SEASON_END(y);
     const inSeason = days.filter((d) => d.date >= start && d.date <= end);
@@ -134,6 +134,7 @@
     const remain = [], totals = [], toDateHist = [];
     for (const [season, arr] of Object.entries(clim.seasons)) {
       if (Number(season) === y) continue;
+      if (phase && phase !== "all" && enso && enso[season] !== phase) continue;
       remain.push(arr.slice(idxAfter).reduce((s, v) => s + v, 0));
       totals.push(arr.reduce((s, v) => s + v, 0));
       toDateHist.push(arr.slice(0, idxToday).reduce((s, v) => s + v, 0));
@@ -144,7 +145,7 @@
       season: y, toDate, forecast: fcTotal,
       projected: { p10: base + q(remain, 0.1), p50: base + q(remain, 0.5), p90: base + q(remain, 0.9) },
       normalTotal: q(totals, 0.5), normalToDate: q(toDateHist, 0.5),
-      dayIndex: idxToday,
+      dayIndex: idxToday, nSeasons: totals.length,
     };
   }
 

@@ -38,6 +38,11 @@ for key, site in RESORTS.items():
     tot = {k: sum(v) for k, v in seasons.items()}
     clim[key] = dict(seasons=seasons)
     print(key, "seasons", len(seasons), "median season in:", round(np.median(list(tot.values())) / 2.54))
+# ENSO phase by season (Dec-Feb Oceanic Nino Index from NOAA CPC; weak events included)
+ENSO = {2005: "nina", 2006: "nino", 2007: "nina", 2008: "nina", 2009: "nino", 2010: "nina", 2011: "nina",
+        2012: "neutral", 2013: "neutral", 2014: "nino", 2015: "nino", 2016: "nina", 2017: "nina", 2018: "nino",
+        2019: "neutral", 2020: "nina", 2021: "nina", 2022: "nina", 2023: "nino", 2024: "nina", 2025: "nina"}
+clim["enso"] = {str(k): v for k, v in ENSO.items()}
 (APP / "climatology.json").write_text(json.dumps(clim, separators=(",", ":")))
 
 # accuracy + storm ranges from out-of-fold predictions
