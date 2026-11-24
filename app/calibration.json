@@ -40,11 +40,11 @@
     "min_lead": 0,
     "max_lead": 2,
     "label": "Days 1\u20133",
-    "factor": 1.034,
-    "days": 2,
-    "obs_cm": 2.5,
-    "pred_cm": 0.5,
-    "snow_days": 1
+    "factor": 1.095,
+    "days": 6,
+    "obs_cm": 7.6,
+    "pred_cm": 1.8,
+    "snow_days": 3
    },
    {
     "min_lead": 3,
