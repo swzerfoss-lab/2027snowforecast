@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-24",
+ "updated": "2026-11-25",
  "window_days": 120,
  "prior_cm": 60.0,
  "regions": {
@@ -40,10 +40,10 @@
     "min_lead": 0,
     "max_lead": 2,
     "label": "Days 1\u20133",
-    "factor": 1.095,
-    "days": 6,
+    "factor": 1.069,
+    "days": 10,
     "obs_cm": 7.6,
-    "pred_cm": 1.8,
+    "pred_cm": 3.3,
     "snow_days": 3
    },
    {
