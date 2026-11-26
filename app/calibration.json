@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-25",
+ "updated": "2026-11-26",
  "window_days": 120,
  "prior_cm": 60.0,
  "regions": {
@@ -40,20 +40,20 @@
     "min_lead": 0,
     "max_lead": 2,
     "label": "Days 1\u20133",
-    "factor": 1.069,
-    "days": 10,
+    "factor": 1.064,
+    "days": 14,
     "obs_cm": 7.6,
-    "pred_cm": 3.3,
+    "pred_cm": 3.6,
     "snow_days": 3
    },
    {
     "min_lead": 3,
     "max_lead": 6,
     "label": "Days 4\u20137",
-    "factor": 1.0,
-    "days": 0,
+    "factor": 0.997,
+    "days": 2,
     "obs_cm": 0.0,
-    "pred_cm": 0.0,
+    "pred_cm": 0.2,
     "snow_days": 0
    },
    {
